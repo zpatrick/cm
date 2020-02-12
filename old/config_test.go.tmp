@@ -1,0 +1,49 @@
+package cm
+
+import (
+	"flag"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestConfig(t *testing.T) {
+	yaml := cm.NewFile(...)
+
+	StringSeting(
+		FromEnvironmentVariable("APP_REDIS_HOST"),
+		FromStringFlag("redis-host", "", "redis host"),
+		FromYAMLFile(yaml, "redis", "host"),
+	)
+
+	cfg := Config{
+		Providers: []Provider{
+			FileProvider{
+				Path:         "config.yaml",
+				Parser:       YAMLParser(),
+				ReloadPolicy: ReloadAlways(),
+			},
+			EnvironmentProvider{
+				"redis.host": "APP_REDIS_HOST",
+				"redis.port": "APP_REDIS_PORT",
+			},
+			FlagProvider{
+				"redis.host": flag.String("redis-host", "", "redis host"),
+				"redis.port": flag.Int("redis-port", 0, "redis port"),
+			},
+		},
+		Settings: []Setting{
+			StringSetting{
+				Key:     "redis.host",
+				Default: "localhost",
+			},
+			IntSetting{
+				Key:      "redis.port",
+				Default:  8080,
+				Validate: ValidateIntBetween(0, 100),
+			},
+		},
+	}
+
+	assert.Equal(t, 0, cfg.MustInt("redis.port"))
+}
