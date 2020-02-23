@@ -41,8 +41,8 @@ package cm
 */
 
 type Schema struct {
-	IntSettings    map[string]IntSetting
-	StringSettings map[string]StringSetting
+	IntSettings    map[string]*IntSetting
+	StringSettings map[string]*StringSetting
 }
 
 type Config struct {
