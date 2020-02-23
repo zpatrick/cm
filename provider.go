@@ -1,5 +1,10 @@
 package cm
 
+type Provider interface {
+	IntProvider
+	StringProvider
+}
+
 type IntProvider interface {
 	Int(key string) (int, error)
 }

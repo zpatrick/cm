@@ -3,6 +3,7 @@ package cm
 import (
 	"fmt"
 	"io/ioutil"
+	"reflect"
 
 	"gopkg.in/yaml.v2"
 )
@@ -43,12 +44,12 @@ func (f *FileProvider) loadFields() (map[string]interface{}, error) {
 	if f.fields == nil || f.Reload() {
 		content, err := ioutil.ReadFile(f.Path)
 		if err != nil {
-			return nil, fmt.Errorf("FileProvider: failed to load %s: %w", f.Path, err)
+			return nil, fmt.Errorf("failed to load %s: %w", f.Path, err)
 		}
 
 		fields, err := f.Parse(content)
 		if err != nil {
-			return nil, fmt.Errorf("FileProvider: failed to parse file contents: %w", err)
+			return nil, fmt.Errorf("failed to parse file contents: %w", err)
 		}
 
 		f.fields = fields
@@ -57,56 +58,78 @@ func (f *FileProvider) loadFields() (map[string]interface{}, error) {
 	return f.fields, nil
 }
 
-func (f *FileProvider) loadField(key string, root string, sections ...string) (interface{}, error) {
+func (f *FileProvider) loadField(key string, section string, subsections ...string) (interface{}, error) {
 	fields, err := f.loadFields()
 	if err != nil {
 		return nil, err
 	}
 
-	chain := append([]string{root}, sections...)
-	for i, c := range chain {
-		val, ok := fields[c]
+	chain := append([]string{section}, subsections...)
+	for i := len(chain) - 1; i > 0; i-- {
+		sectionKey := chain[0]
+		chain = chain[1:]
+
+		section, ok := fields[sectionKey]
 		if !ok {
-			return nil, NewSettingNotFoundError(key)
+			return nil, NewKeyNotFoundError(key)
 		}
 
-		if i == len(chain)-1 {
-			return val, nil
-		}
+		switch s := section.(type) {
+		case map[string]interface{}:
+			fields = s
+		case map[interface{}]interface{}:
+			subfields := make(map[string]interface{}, len(s))
+			for subsectionKey, subsectionValue := range s {
+				subsectionKeyStr, ok := subsectionKey.(string)
+				if !ok {
+					return nil, NewInvalidTypeError(key, reflect.TypeOf(subsectionKeyStr), reflect.TypeOf(subsectionKey))
+				}
 
-		f, ok := val.(map[string]interface{})
-		if !ok {
-			return nil, NewInvalidTypeError(key)
-		}
+				subfields[subsectionKeyStr] = subsectionValue
+			}
 
-		fields = f
+			fields = subfields
+		default:
+			return nil, NewInvalidTypeError(key, reflect.TypeOf(map[string]interface{}{}), reflect.TypeOf(section))
+		}
 	}
 
-	return nil, fmt.Errorf("how did we get here")
+	val, ok := fields[chain[0]]
+	if !ok {
+		return nil, NewKeyNotFoundError(key)
+	}
+
+	return val, nil
 }
 
-func (f *FileProvider) String(root string, sections ...string) StringProvider {
+func (f *FileProvider) String(section string, subsections ...string) StringProvider {
 	return StringProviderFunc(func(key string) (string, error) {
-		value, err := f.loadField(key, root, sections...)
+		val, err := f.loadField(key, section, subsections...)
 		if err != nil {
 			return "", err
 		}
 
-		if value == nil {
-			return "", NewSettingNotFoundError(key)
-		}
-
-		s, ok := value.(string)
+		s, ok := val.(string)
 		if !ok {
-			return "", NewInvalidTypeError(key)
+			return "", fmt.Errorf("FileProvider: %w", NewInvalidTypeError(key, reflect.TypeOf(s), reflect.TypeOf(val)))
 		}
 
 		return s, nil
 	})
 }
 
-func (f *FileProvider) Int(sections ...string) IntProvider {
+func (f *FileProvider) Int(section string, subsections ...string) IntProvider {
 	return IntProviderFunc(func(key string) (int, error) {
-		return 0, nil
+		val, err := f.loadField(key, section, subsections...)
+		if err != nil {
+			return 0, err
+		}
+
+		i, ok := val.(int)
+		if !ok {
+			return 0, fmt.Errorf("FileProvider: %w", NewInvalidTypeError(key, reflect.TypeOf(i), reflect.TypeOf(val)))
+		}
+
+		return i, nil
 	})
 }
