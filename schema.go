@@ -101,12 +101,11 @@ func (s *Schema) Validate() error {
 	return nil
 }
 
-type Config struct {
-	intSchemas    map[string]*IntSchema
-	stringSchemas map[string]*StringSchema
-}
+func (s *Schema) Provider() (Provider, error) {
+	if err := s.Validate(); err != nil {
+		return nil, err
+	}
 
-func NewConfig(s Schema) *Config {
 	intSchemas := make(map[string]*IntSchema, len(s.IntSchemas))
 	for _, is := range s.IntSchemas {
 		intSchemas[is.Key] = is
@@ -117,14 +116,19 @@ func NewConfig(s Schema) *Config {
 		stringSchemas[ss.Key] = ss
 	}
 
-	return &Config{
+	return &StandardProvider{
 		intSchemas:    intSchemas,
 		stringSchemas: stringSchemas,
-	}
+	}, nil
 }
 
-func (c *Config) Int(key string) (int, error) {
-	schema, ok := c.intSchemas[key]
+type StandardProvider struct {
+	intSchemas    map[string]*IntSchema
+	stringSchemas map[string]*StringSchema
+}
+
+func (s *StandardProvider) Int(key string) (int, error) {
+	schema, ok := s.intSchemas[key]
 	if !ok {
 		return 0, NewKeyNotDefinedError(key)
 	}
@@ -132,8 +136,8 @@ func (c *Config) Int(key string) (int, error) {
 	return schema.Value()
 }
 
-func (c *Config) MustInt(key string) int {
-	v, err := c.Int(key)
+func (s *StandardProvider) MustInt(key string) int {
+	v, err := s.Int(key)
 	if err != nil {
 		panic(err)
 	}
@@ -141,8 +145,8 @@ func (c *Config) MustInt(key string) int {
 	return v
 }
 
-func (c *Config) String(key string) (string, error) {
-	schema, ok := c.stringSchemas[key]
+func (s *StandardProvider) String(key string) (string, error) {
+	schema, ok := s.stringSchemas[key]
 	if !ok {
 		return "", NewKeyNotDefinedError(key)
 	}
@@ -150,8 +154,8 @@ func (c *Config) String(key string) (string, error) {
 	return schema.Value()
 }
 
-func (c *Config) MustString(key string) string {
-	v, err := c.String(key)
+func (s *StandardProvider) MustString(key string) string {
+	v, err := s.String(key)
 	if err != nil {
 		panic(err)
 	}

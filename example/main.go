@@ -45,22 +45,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := schema.Validate(); err != nil {
-		log.Fatal(err)
-	}
-
-	cfg := cm.NewConfig(schema)
-	redisPort, err := cfg.Int("redis.port")
+	p, err := schema.Provider()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Port:", redisPort)
-
-	redisHost, err := cfg.String("redis.host")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Host:", redisHost)
+	fmt.Println("Redis Host:", p.MustString("redis.host"))
+	fmt.Println("Redis Port:", p.MustInt("redis.port"))
 }

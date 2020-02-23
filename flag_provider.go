@@ -3,6 +3,7 @@ package cm
 import (
 	"flag"
 	"fmt"
+	"os"
 )
 
 type FlagProvider struct {
@@ -15,7 +16,10 @@ func NewFlagProvider(name string, errorHandling flag.ErrorHandling) *FlagProvide
 
 func (f *FlagProvider) assertParsed() error {
 	if !f.Parsed() {
-		return fmt.Errorf("FlagSet.Parse has not been called!")
+		args := os.Args[1:]
+		if err := f.Parse(args); err != nil {
+			return fmt.Errorf("failed to parse args %v: %w", args, err)
+		}
 	}
 
 	return nil
