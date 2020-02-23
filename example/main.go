@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	environment := cm.NewEnvironmentProvider()
+	envProvider := cm.NewEnvironmentProvider()
 	flagProvider := cm.NewFlagProvider("app", flag.ContinueOnError)
 	fileProvider := cm.NewFileProvider("config.yaml", cm.ParseYAML, cm.ReloadNever)
 
@@ -24,7 +24,7 @@ func main() {
 				Providers: []cm.IntProvider{
 					flagProvider.Int("redis-port", 4000, "redis port", false),
 					fileProvider.Int("redis", "port"),
-					environment.Int("APP_REDIS_PORT"),
+					envProvider.Int("APP_REDIS_PORT"),
 				},
 			},
 		},
@@ -35,7 +35,7 @@ func main() {
 				Providers: []cm.StringProvider{
 					flagProvider.String("redis-host", "localhost", "redis host", false),
 					fileProvider.String("redis", "host"),
-					environment.String("APP_REDIS_HOST"),
+					envProvider.String("APP_REDIS_HOST"),
 				},
 			},
 		},
